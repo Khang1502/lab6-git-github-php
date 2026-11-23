@@ -1,0 +1,53 @@
+
+name: Deploy PHP to alwaysdata
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'php-site/**'
+      - '.github/workflows/deploy-php.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+
+      - name: Check PHP syntax
+        run: |
+          find php-site -name '*.php' -exec php -l {} \;
+
+      - name: Deploy via FTPS
+        uses: SamKirkland/FTP-Deploy-Action@v4.4.0
+        with:
+          server: ${{ secrets.FTP_HOST }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          protocol: ftps
+          port: 21
+          security: strict
+          local-dir: ./php-site/
+          server-dir: ./
+
+      - name: Verify website
+        env:
+          SITE_URL: ${{ vars.SITE_URL }}
+        run: |
+          set -e
+          test -n "$SITE_URL"
+          curl --fail --show-error \
+            --retry 3 \
+            "${SITE_URL%/}/health.php" \
+            | grep -q PHP_DEPLOY_OK_V1
