@@ -42,6 +42,7 @@ jobs:
           server-dir: ./
 
      
+      
       - name: Verify website
         env:
           SITE_URL: ${{ vars.SITE_URL }}
@@ -53,11 +54,17 @@ jobs:
           expected="$(php php-site/health.php)"
 
           actual="$(curl --fail --silent --show-error \
-            --location --retry 3 --retry-delay 2 \
-            "${SITE_URL%/}/health.php")"
+            --location \
+            --retry 3 \
+            --retry-delay 2 \
+            --max-time 30 \
+            -H "Cache-Control: no-cache" \
+            "${SITE_URL%/}/health.php?ci=${GITHUB_SHA}")"
 
           echo "Expected: $expected"
           echo "Actual: $actual"
 
           test "$actual" = "$expected"
+
+          echo "PHP deployment verified successfully!"
 
