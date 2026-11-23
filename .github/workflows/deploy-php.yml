@@ -41,13 +41,23 @@ jobs:
           local-dir: ./php-site/
           server-dir: ./
 
+     
       - name: Verify website
         env:
           SITE_URL: ${{ vars.SITE_URL }}
         run: |
-          set -e
+          set -euo pipefail
+
           test -n "$SITE_URL"
-          curl --fail --show-error \
-            --retry 3 \
-            "${SITE_URL%/}/health.php" \
-            | grep -q PHP_DEPLOY_OK_V1
+
+          expected="$(php php-site/health.php)"
+
+          actual="$(curl --fail --silent --show-error \
+            --location --retry 3 --retry-delay 2 \
+            "${SITE_URL%/}/health.php")"
+
+          echo "Expected: $expected"
+          echo "Actual: $actual"
+
+          test "$actual" = "$expected"
+
